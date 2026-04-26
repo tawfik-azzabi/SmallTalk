@@ -504,7 +504,9 @@ function render(){
       if(kept>0)header2.appendChild(h("span",{style:Dm("10px","rgba(232,213,163,.35)")},`${kept} retenue${kept>1?"s":""}`));
       item.appendChild(header2);
       item.appendChild(h("div",{style:Dm("11px","rgba(240,236,228,.26)")+";line-height:1.5;margin-bottom:6px"},s.selMod==="m2"?r.item.amorce:r.item.situation));
-      item.appendChild(h("div",{style:`${Dm("13px",r.input?"rgba(240,236,228,.65)":"rgba(240,236,228,.18)")};font-style:italic;margin-bottom:8px`},r.input?`→ ${r.input}`,"— pas de réponse saisie"));
+      const inputText = r.input ? "→ " + r.input : "— pas de réponse saisie";
+      const inputColor = r.input ? "rgba(240,236,228,.65)" : "rgba(240,236,228,.18)";
+      item.appendChild(h("div",{style:Dm("13px",inputColor)+";font-style:italic;margin-bottom:8px"},inputText));
       if(pos.length||neg.length){
         const tw=h("div",{class:"tags-wrap"});
         pos.forEach(e=>tw.appendChild(h("span",{class:"tag-pill tag-pos"},e.label)));
