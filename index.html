@@ -1,0 +1,1104 @@
+import { useState, useEffect, useRef } from "react";
+
+const SITUATIONS_M1 = [
+  { id:"S1", mode:"perso", theme:"Salle de sport",
+    situation:"Entre deux séries, un habitué que tu vois 3 fois par semaine depuis des mois se pose à côté. Vous vous connaissez de vue, c'est tout. Silence.",
+    interlocuteur:"Habitué — familier sans lien réel", typeAmorce:"Observation sur la situation ou le lieu",
+    propositions:[
+      "\"T'as l'air d'avoir survécu — bonne séance ?\" (ton léger, ouvre sans forcer)",
+      "\"On se croise tout le temps — j'ai même pas ton prénom. Moi c'est [prénom].\"",
+      "\"C'est chargé ce matin — ils ont mis une affiche 'complet' à l'entrée ou c'est moi qui hallucine ?\""
+    ],
+    diagnostic:"Nommer la fréquence du croisement ou observer la situation avec légèreté — les deux évitent le 'ça va ?' sans forcer une conversation." },
+
+  { id:"S2", mode:"perso", theme:"Salle de sport",
+    situation:"Tu attends une machine. Quelqu'un est dessus, entre deux séries, téléphone en main. Tu veux savoir combien il lui reste.",
+    interlocuteur:"Inconnu ou habitué — contexte neutre", typeAmorce:"Question directe avec une touche légère",
+    propositions:[
+      "\"T'as encore combien — je veux pas te presser mais je vais faire semblant de m'étirer encore 10 minutes.\" (sourire)",
+      "\"C'est bon si je me pose là entre tes séries ou t'as encore du taf ?\"",
+      "\"Je te vole la machine ou tu repars dessus ?\""
+    ],
+    diagnostic:"La question pratique est la porte d'entrée naturelle — une légère touche d'humour la rend moins froide et laisse l'échange s'ouvrir si l'autre veut." },
+
+  { id:"S3", mode:"perso", theme:"Salle de sport",
+    situation:"Quelqu'un finit sa série sur une machine que tu attends. Il reste là à souffler, pas pressé de partir.",
+    interlocuteur:"Inconnu ou habitué — moment de transition", typeAmorce:"Rebond sur l'effort",
+    propositions:[
+      "\"T'avais l'air de pas rigoler là-dessus — c'était quoi ton programme ?\"",
+      "\"Je vais pas te mentir — t'as l'air d'avoir souffert. Bonne séance ?\"",
+      "\"C'est quoi ce mouvement — j'essaie de comprendre si je devrais l'intégrer ou pas.\""
+    ],
+    diagnostic:"Le moment de transition après l'effort est le plus naturel — l'autre est disponible et le contexte légitime totalement l'échange." },
+
+  { id:"S4", mode:"perso", theme:"Salle de sport",
+    situation:"Au vestiaire après l'entraînement. Un habitué est là, vous vous croisez souvent depuis des mois sans jamais avoir vraiment parlé.",
+    interlocuteur:"Habitué — familier, contexte détendu", typeAmorce:"Rebond sur la séance ou la routine",
+    propositions:[
+      "\"Bonne séance ? T'avais l'air de partir en guerre tout à l'heure.\"",
+      "\"Je te vois tout le temps mais on a jamais vraiment parlé — t'es là depuis longtemps ?\"",
+      "\"T'arrives à quelle heure d'habitude — t'es matinal ou c'est les circonstances qui t'amènent le matin ?\""
+    ],
+    diagnostic:"Le vestiaire est le meilleur moment — tout le monde est détendu, le timing est naturel, aucune machine à attendre." },
+
+  { id:"S5", mode:"perso", theme:"Salle de sport",
+    situation:"Tu croises devant un restaurant quelqu'un que tu vois régulièrement à la salle. Hors contexte, vous faites la queue ensemble.",
+    interlocuteur:"Habitué salle de sport — hors contexte", typeAmorce:"Nommer le hors-contexte avec légèreté",
+    propositions:[
+      "\"Attends — je te vois habituellement en mode souffrance. T'as une autre vie en fait.\" (sourire)",
+      "\"Drôle de te croiser habillé — je t'aurais pas reconnu sans les baskets.\"",
+      "\"On se retrouve même en dehors. C'est bien ici — tu connais ?\""
+    ],
+    diagnostic:"Le hors-contexte est une ressource directe — le nommer avec humour transforme la surprise en accroche naturelle." },
+
+  { id:"A1", mode:"perso", theme:"Ascenseur / Couloir",
+    situation:"Ascenseur de ton immeuble. Un voisin que tu croises souvent mais avec qui tu n'as jamais dépassé le 'bonjour'. Vous montez ensemble.",
+    interlocuteur:"Voisin — familier, barrière de politesse", typeAmorce:"Observation légère sur le moment partagé",
+    propositions:[
+      "\"On se croise depuis combien de temps ? J'ai même pas ton prénom — moi c'est [prénom].\"",
+      "\"L'ascenseur qui arrive du premier coup — c'est ta journée.\" (sourire)",
+      "\"T'es du matin ou du soir toi — je te croise à des heures très différentes.\""
+    ],
+    diagnostic:"Le voisinage fréquent sans lien réel est la ressource à nommer — avec légèreté, pas lourdeur." },
+
+  { id:"A2", mode:"pro", theme:"Ascenseur / Couloir",
+    situation:"Ascenseur du bureau. Un collègue d'une autre équipe monte avec toi. Vous vous reconnaissez sans vraiment vous connaître. Silence.",
+    interlocuteur:"Collègue transverse — semi-connu", typeAmorce:"Question ouverte ou observation sur le contexte",
+    propositions:[
+      "\"On se croise souvent — j'ai jamais su dans quelle équipe t'étais. [prénom] ?\"",
+      "\"T'as l'air d'avoir une journée chargée ou c'est ton expression habituelle ?\" (sourire)",
+      "\"C'est calme aujourd'hui — tout le monde est en remote ou en réunion ?\""
+    ],
+    diagnostic:"Nommer le croisement répété est la voie la plus directe — ça justifie naturellement l'échange sans que ça paraisse forcé." },
+
+  { id:"A3", mode:"pro", theme:"Ascenseur / Couloir",
+    situation:"Couloir du bureau. Tu croises un collègue avec qui la relation est restée très formelle malgré le temps. Tu veux briser ça.",
+    interlocuteur:"Collègue — barrière pro installée", typeAmorce:"Question légère hors registre pro",
+    propositions:[
+      "\"T'as l'air de survivre — bonne journée ou on n'en parle pas ?\" (ton léger)",
+      "\"Tu pars tôt ce soir ou t'as encore une longue liste ?\"",
+      "\"On se croise tout le temps — j'ai l'impression de pas te connaître du tout finalement.\""
+    ],
+    diagnostic:"Sortir du registre pro avec une question légère sur le quotidien est le levier le plus simple pour briser la formalité sans brusquer." },
+
+  { id:"A4", mode:"pro", theme:"Ascenseur / Couloir",
+    situation:"Tu te retrouves seul dans le couloir avec ton N+2. Vous marchez dans la même direction pendant 20 secondes.",
+    interlocuteur:"Hiérarchie haute — relation distante", typeAmorce:"Question centrée sur leur agenda",
+    propositions:[
+      "\"C'est comment de votre côté en ce moment — la période est chargée ?\"",
+      "\"Vous êtes au séminaire la semaine prochaine ? Ça a l'air dense comme programme.\"",
+      "\"J'ai suivi le brief de ce matin — belle orientation prise. Ça va dans le bon sens.\""
+    ],
+    diagnostic:"Avec la hiérarchie, ouvrir sur leur agenda plutôt que le tien — tu mets l'autre en position centrale, pas toi." },
+
+  { id:"A5", mode:"perso", theme:"Ascenseur / Couloir",
+    situation:"Ascenseur bondé et silencieux dans ton immeuble. Tu montes avec plusieurs voisins que tu ne connais pas ou peu.",
+    interlocuteur:"Voisins / inconnus — groupe silencieux", typeAmorce:"Brise-glace léger sur la situation",
+    propositions:[
+      "\"On est tous au même étage ou on se connaît même pas ?\" (sourire)",
+      "\"C'est l'heure de pointe de l'immeuble on dirait — ambiance métro.\"",
+      "\"Je promets de pas faire la conversation à tout le monde.\" (regard amusé)"
+    ],
+    diagnostic:"L'humour léger et court sur la situation partagée est la seule entrée naturelle en groupe silencieux — sans attente de réponse longue." },
+
+  { id:"E1", mode:"perso", theme:"École",
+    situation:"Un parent que tu vois tous les matins depuis des mois. Vous vous saluez depuis la rentrée sans jamais aller plus loin.",
+    interlocuteur:"Parent — familier, barrière de politesse", typeAmorce:"Rebond concret ou nommer la durée",
+    propositions:[
+      "\"Ça fait depuis la rentrée qu'on se croise — j'ai même pas ton prénom. Moi c'est [prénom].\"",
+      "\"C'est animé ce matin — il se passe quelque chose ou c'est juste le lundi ?\"",
+      "\"T'as eu le message de l'instit ? Je sais pas si j'ai bien compris ce qu'on doit faire.\""
+    ],
+    diagnostic:"Nommer la durée du croisement répété ('depuis la rentrée') justifie naturellement l'échange — c'est un fait, pas une approche." },
+
+  { id:"E2", mode:"perso", theme:"École",
+    situation:"Tu arrives et un groupe de parents que tu connais vaguement est en pleine discussion. Tu dois t'intégrer.",
+    interlocuteur:"Groupe — semi-connus, discussion en cours", typeAmorce:"Rebond sur leur élan",
+    propositions:[
+      "\"Je débarque — vous parlez de quoi ? J'ai l'air d'arriver au bon moment.\"",
+      "\"C'est quoi l'info du matin ? J'ai l'impression de louper quelque chose.\"",
+      "\"Je m'incruste — c'est grave ce dont vous parlez ou on peut rigoler ?\""
+    ],
+    diagnostic:"S'intégrer à un groupe en discussion, c'est rebondir sur leur élan — pas repartir de zéro avec un sujet nouveau." },
+
+  { id:"E3", mode:"perso", theme:"École",
+    situation:"Tu vois en vrai pour la première fois un parent avec qui tu échanges uniquement sur le groupe WhatsApp de classe.",
+    interlocuteur:"Semi-virtuel — première rencontre réelle", typeAmorce:"Nommer la transition virtuel → réel",
+    propositions:[
+      "\"Ah — enfin un visage sur le prénom. Je t'imaginais différemment.\" (sourire)",
+      "\"On s'écrit tout le temps et c'est la première fois qu'on se voit — c'est bizarre non ?\"",
+      "\"Je t'ai reconnu grâce à ta photo de profil. T'aurais pas dû la mettre en vrai.\" (ton léger)"
+    ],
+    diagnostic:"La transition virtuel → réel est une ressource directe — la nommer avec légèreté crée immédiatement de la complicité." },
+
+  { id:"E4", mode:"perso", theme:"École",
+    situation:"Tu croises un parent d'élève dans un café ou dans la rue, hors contexte. Tu le reconnais mais il est sorti de son cadre habituel.",
+    interlocuteur:"Parent — semi-connu, hors contexte", typeAmorce:"Nommer la reconnaissance avec spontanéité",
+    propositions:[
+      "\"Attends — je te reconnais. L'école ? On se croise le matin.\"",
+      "\"Je t'aurais pas forcément reconnu hors de l'école — t'as une autre vie aussi.\" (sourire)",
+      "\"Drôle de te croiser ici — t'habites dans le coin ou c'est le destin ?\""
+    ],
+    diagnostic:"Nommer la reconnaissance sans hésiter vaut mieux que faire semblant de ne pas voir — c'est naturel, et ça crée immédiatement quelque chose à dire." },
+
+  { id:"C1", mode:"pro", theme:"Collègues",
+    situation:"Pause café. Un collègue avec qui tu travailles régulièrement mais avec qui la relation reste très pro et un peu froide.",
+    interlocuteur:"Collègue — barrière pro installée", typeAmorce:"Question légère hors registre travail",
+    propositions:[
+      "\"T'as l'air en forme — ou t'es juste bien réveillé ?\" (sourire)",
+      "\"T'as un truc sympa ce weekend ou c'est boulot-boulot jusqu'à dimanche ?\"",
+      "\"C'est combien de cafés aujourd'hui — on est à combien ?\""
+    ],
+    diagnostic:"Une question légère sur le quotidien hors travail humanise la relation sans forcer — et le café est le terrain commun le plus évident." },
+
+  { id:"C2", mode:"pro", theme:"Collègues",
+    situation:"Salle de réunion, 2 minutes avant que ça commence. Tu es seul avec un collègue avec qui la relation est restée formelle.",
+    interlocuteur:"Collègue — barrière pro, contexte neutre", typeAmorce:"Observation sur la réunion ou la semaine",
+    propositions:[
+      "\"C'est quoi l'ordre du jour réel selon toi — ça va durer longtemps ?\"",
+      "\"T'as préparé quelque chose ou on improvise ensemble ?\" (sourire)",
+      "\"C'est chargé comme semaine ? T'as l'air d'enchaîner les réunions.\""
+    ],
+    diagnostic:"La réunion imminente est le terrain commun immédiat — une observation légère ou complice dessus ouvre naturellement sans effort." },
+
+  { id:"C3", mode:"pro", theme:"Collègues",
+    situation:"Tu recroises un collègue avec qui la relation est formelle, par hasard dans un restau ou dans les transports.",
+    interlocuteur:"Collègue — hors contexte pro", typeAmorce:"Rebond sur le hors-contexte",
+    propositions:[
+      "\"Je t'aurais pas forcément reconnu hors du bureau — t'as une vraie vie.\" (sourire)",
+      "\"On se retrouve même en dehors — t'habites dans le coin ?\"",
+      "\"Tu vois, on aurait pu faire le trajet ensemble depuis le début.\""
+    ],
+    diagnostic:"Le hors-contexte est une opportunité rare avec un collègue formel — en jouer légèrement humanise la relation sans effort." },
+
+  { id:"G1", mode:"perso", theme:"Soirée",
+    situation:"Soirée entre amis. Tu saturtes un peu, ta tête se vide. Un ami te présente quelqu'un que tu ne connais pas.",
+    interlocuteur:"Inconnu — intro par ami commun", typeAmorce:"Rebond sur l'ami commun ou la soirée",
+    propositions:[
+      "\"Il t'avait prévenu quoi sur moi ? Je veux calibrer ce que j'ai à rattraper.\" (sourire)",
+      "\"Vous vous connaissez comment tous les deux — c'est quoi l'histoire ?\"",
+      "\"T'es là depuis longtemps ? C'est quoi ton bilan de la soirée jusqu'ici ?\""
+    ],
+    diagnostic:"Quand la tête se vide, une question sur l'autre est le meilleur réflexe — tu parles moins, tu écoutes plus, et ça relance naturellement." },
+
+  { id:"G2a", mode:"perso", theme:"Soirée",
+    situation:"Soirée entre amis. La conversation générale tombe à plat. Silence collectif. Tu veux relancer le groupe.",
+    interlocuteur:"Groupe d'amis — conversation à plat", typeAmorce:"Question ouverte à tout le groupe",
+    propositions:[
+      "\"Je pose une question — quelqu'un a fait quelque chose d'inattendu depuis la dernière fois ?\"",
+      "\"Bon — silence de mort officiel. On change de sujet. Quelqu'un a une opinion forte sur quelque chose ?\"",
+      "\"Attendez — personne a dit ce qu'il fait cet été. On commence par qui ?\""
+    ],
+    diagnostic:"Pour relancer un groupe, une question légèrement provocante ou ludique adressée à tous redistribue la parole sans désigner quelqu'un." },
+
+  { id:"G2b", mode:"perso", theme:"Soirée",
+    situation:"Soirée entre amis. Tu saturtes du groupe. Tu veux créer un tête-à-tête avec quelqu'un que tu connais peu.",
+    interlocuteur:"Semi-connu — ami d'ami dans le groupe", typeAmorce:"Question directe en aparté",
+    propositions:[
+      "\"On a jamais vraiment parlé tous les deux — c'est quoi ton lien avec [ami commun] à la base ?\"",
+      "\"T'as l'air dans ta tête — ou c'est moi qui projette ?\" (sourire, ton léger)",
+      "\"[Ami commun] m'a dit que tu faisais quelque chose d'intéressant — c'est quoi exactement ?\""
+    ],
+    diagnostic:"Pour créer un tête-à-tête dans un groupe, une question directe et légèrement personnelle suffit — elle signale que tu veux parler à cette personne en particulier." },
+
+  { id:"R1", mode:"perso", theme:"Retrouvailles",
+    situation:"Dans la rue ou un lieu public, tu tombes sur quelqu'un avec qui tu as travaillé dans le passé. Vous ne vous êtes pas vus depuis 2-3 ans.",
+    interlocuteur:"Ancien collègue — connu, contexte inattendu", typeAmorce:"Nommer l'ellipse temporelle",
+    propositions:[
+      "\"Ça fait quoi — 2 ans ? T'es toujours chez [boîte] ou t'as bougé depuis ?\"",
+      "\"Je pensais à toi il y a pas longtemps — et te voilà. C'est suspect.\" (sourire)",
+      "\"Quelle surprise — t'as pas changé. C'est quoi la vie en ce moment ?\""
+    ],
+    diagnostic:"Nommer directement le temps écoulé évite le flou inconfortable — ça ancre l'échange dans du concret immédiatement." },
+
+  { id:"R2", mode:"perso", theme:"Retrouvailles",
+    situation:"Tu reconnais un visage familier de la salle de sport dans un contexte complètement différent — rue, café, restaurant.",
+    interlocuteur:"Habitué salle — familier, hors contexte", typeAmorce:"Nommer le hors-contexte avec légèreté",
+    propositions:[
+      "\"Je te vois tout le temps à la salle — et là tu as une vie normale. Choquant.\" (sourire)",
+      "\"Je t'aurais pas reconnu habillé comme ça — t'es du quartier ?\"",
+      "\"Drôle de te croiser ici. On se croise que dans un contexte d'habitude.\""
+    ],
+    diagnostic:"Le hors-contexte est toujours une ressource — le nommer avec légèreté donne immédiatement quelque chose à dire." },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DÉFIS DU JOUR — pop-up après round 3 (Module 1)
+// ─────────────────────────────────────────────────────────────────────────────
+const DEFIS = [
+  {
+    safe:   "\"T'as l'air d'avoir survécu à ta journée — c'est bien ou on n'en parle pas ?\"",
+    medium: "\"On se croise souvent — j'ai même pas ton prénom. Moi c'est [prénom].\"",
+    bold:   "\"Je vais tenter quelque chose — t'as une minute ?\""
+  },
+  {
+    safe:   "\"Bonne journée ou journée de merde — à voir ta tête ?\" (sourire)",
+    medium: "\"T'as l'air dans ta tête — grosse journée ou c'est moi qui projette ?\"",
+    bold:   "\"Dis-moi quelque chose d'intéressant — j'en peux plus du small talk classique.\""
+  },
+  {
+    safe:   "\"C'est animé ici — il se passe quelque chose ou c'est tous les jours comme ça ?\"",
+    medium: "\"On se voit tout le temps mais j'ai l'impression de pas te connaître du tout.\"",
+    bold:   "\"T'as une opinion sur quelque chose en ce moment — n'importe quoi ?\""
+  },
+  {
+    safe:   "\"T'as survécu à la semaine — c'est déjà ça.\" (sourire)",
+    medium: "\"Ça fait longtemps qu'on se croise — c'est quoi la suite pour toi en ce moment ?\"",
+    bold:   "\"Je teste quelque chose — c'est quoi le truc le plus inattendu qui t'est arrivé cette semaine ?\""
+  },
+  {
+    safe:   "\"T'es plutôt matin difficile ou tu démarres vite ?\" (ton léger)",
+    medium: "\"On s'est jamais vraiment parlé — c'est quoi ton univers en ce moment ?\"",
+    bold:   "\"Je vais pas faire semblant — t'as l'air intéressant, on s'est jamais parlé.\""
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODULE 2 — SCÉNARIOS RELANCE
+// ─────────────────────────────────────────────────────────────────────────────
+const SCENARIOS_M2 = [
+  { id:"S1-A", mode:"perso", theme:"Salle de sport",
+    situation:"Entre deux séries, un habitué que tu vois 3 fois par semaine se pose à côté. Vous vous connaissez de vue, c'est tout.",
+    amorce:"\"Ça fait un moment qu'on se croise — je t'ai même pas demandé ton prénom. Moi c'est [prénom].\"",
+    replique:"\"Ah ouais — moi c'est [prénom]. Tu viens depuis longtemps ici ?\"",
+    typeRelance:"Répondre + creuser sur l'habitude",
+    propositions:[
+      "\"Bientôt 8 mois. J'ai commencé après le boulot, maintenant je préfère le matin. T'as toujours été matinal ou t'as essayé d'autres créneaux ?\"",
+      "\"Quelques mois — j'essaie de tenir un rythme. T'as l'air bien installé toi — c'est quoi qui t'a amené ici au départ ?\"",
+      "\"Pas si longtemps — 6 mois. Et toi ça fait 2 ans que je te vois — t'as l'air de pas rater beaucoup de séances.\""
+    ],
+    diagnostic:"Répondre avec une info concrète sur soi puis rebondir sur l'autre — ça évite le ping-pong de questions et crée un vrai échange." },
+
+  { id:"S1-B", mode:"perso", theme:"Salle de sport",
+    situation:"Entre deux séries, un habitué que tu vois 3 fois par semaine se pose à côté. Vous vous connaissez de vue, c'est tout.",
+    amorce:"\"C'est chargé ce matin — d'habitude c'est plus calme à cette heure.\"",
+    replique:"\"Ouais franchement. Moi je viens tôt pour éviter ça en général.\"",
+    typeRelance:"Rebond sur son organisation avec légèreté",
+    propositions:[
+      "\"Tôt genre 6h ou 7h ? Moi j'arrive pas avant 8h — je comprends pas comment les gens font avant.\"",
+      "\"Le matin ça change tout — moi j'y arrive pas toujours. T'as un programme fixe ou tu improvises ?\"",
+      "\"6h du mat à la salle — t'es soit très discipliné soit masochiste.\" (sourire) \"C'est quoi ton créneau ?\""
+    ],
+    diagnostic:"L'autre a donné une info concrète (venir tôt) — rebondir dessus avec légèreté montre qu'on écoute vraiment, pas qu'on attend son tour." },
+
+  { id:"S1-C", mode:"perso", theme:"Salle de sport",
+    situation:"Entre deux séries, un habitué que tu vois 3 fois par semaine se pose à côté. Vous vous connaissez de vue, c'est tout.",
+    amorce:"\"T'es sur quoi aujourd'hui — legs ou upper ?\"",
+    replique:"\"Push aujourd'hui. Toi t'as un programme fixe ou tu improvises ?\"",
+    typeRelance:"Répondre + rebondir sur le sien",
+    propositions:[
+      "\"Fixe en théorie — en pratique ça dépend comment je me sens. Tu fais push/pull/legs ou autre chose ?\"",
+      "\"Programme fixe mais j'adapte souvent. T'as quelqu'un qui t'a construit ça ou tu l'as fait tout seul ?\"",
+      "\"Mixte — j'ai une base mais j'improvise beaucoup. T'es suivi par un coach ou tu te débrouilles ?\""
+    ],
+    diagnostic:"L'autre a posé une vraie question — y répondre brièvement puis rebondir sur son univers crée une vraie réciprocité sans monopoliser la parole." },
+
+  { id:"S4-A", mode:"perso", theme:"Salle de sport",
+    situation:"Au vestiaire après l'entraînement. Un habitué est là, vous vous croisez souvent sans jamais avoir vraiment parlé.",
+    amorce:"\"Bonne séance ? T'avais l'air de pas te ménager tout à l'heure.\"",
+    replique:"\"Ouais c'était intense — j'essaie de rattraper une semaine un peu light.\"",
+    typeRelance:"Creuser avec légèreté",
+    propositions:[
+      "\"C'est quoi qui t'a mis à la ramasse — le boulot ou autre chose ?\" (sans pression, ton léger)",
+      "\"Je connais ça — les semaines light ça fout tout en l'air. T'arrives quand même à tenir le rythme ou t'as zappé plusieurs séances ?\"",
+      "\"Rattraper une semaine light en une séance — c'est ambitieux mais j'applaudis l'intention.\" (sourire)"
+    ],
+    diagnostic:"'Semaine light' est une ouverture — creuser dessus avec humour ou curiosité donne à l'autre l'espace d'aller plus loin s'il veut." },
+
+  { id:"S4-B", mode:"perso", theme:"Salle de sport",
+    situation:"Au vestiaire après l'entraînement. Un habitué est là, vous vous croisez souvent sans jamais avoir vraiment parlé.",
+    amorce:"\"Ça fait combien de temps que tu viens ici ? Je t'ai toujours vu depuis que j'ai commencé.\"",
+    replique:"\"Bientôt 2 ans. Toi t'es arrivé quand — y'a pas longtemps non ?\"",
+    typeRelance:"Répondre + creuser leur parcours",
+    propositions:[
+      "\"6 mois. J'avais une autre salle avant. 2 ans — t'as changé beaucoup de choses dans ton entraînement depuis le début ?\"",
+      "\"Pas si longtemps — 8 mois. 2 ans c'est bien — t'as des résultats qui t'ont marqué ou c'est plus une question de régularité ?\"",
+      "\"Quelques mois. Et toi — t'as essayé d'autres salles ou t'es resté ici depuis le début ?\""
+    ],
+    diagnostic:"L'autre a répondu et posé une question — y répondre puis rebondir sur leur durée crée une vraie réciprocité." },
+
+  { id:"S4-C", mode:"perso", theme:"Salle de sport",
+    situation:"Au vestiaire après l'entraînement. Un habitué est là, vous vous croisez souvent sans jamais avoir vraiment parlé.",
+    amorce:"\"Tu viens tous les jours ou t'as un programme fixe ?\"",
+    replique:"\"4 fois par semaine en général. Après ça dépend du boulot.\"",
+    typeRelance:"Rebond sur le boulot avec humour ou curiosité",
+    propositions:[
+      "\"4 fois — c'est bien. Moi j'essaie d'en faire 3 et c'est déjà compliqué. Le boulot c'est quoi comme univers ?\"",
+      "\"'Ça dépend du boulot' — c'est diplomatique.\" (sourire) \"T'as des horaires atypiques ou c'est plutôt les périodes de rush ?\"",
+      "\"Le boulot c'est ce qui fout tout en l'air pour tout le monde. Tu travailles dans quoi ?\""
+    ],
+    diagnostic:"'Ça dépend du boulot' est une ouverture indirecte — rebondir dessus avec légèreté montre qu'on écoute et ouvre sur la personne, pas juste l'entraînement." },
+
+  { id:"A2-A", mode:"pro", theme:"Ascenseur / Couloir",
+    situation:"Ascenseur du bureau. Un collègue d'une autre équipe monte avec toi. Vous vous reconnaissez sans vraiment vous connaître.",
+    amorce:"\"On se croise souvent mais j'ai jamais su dans quelle équipe t'étais.\"",
+    replique:"\"Je suis côté [équipe]. Et toi tu es sur quoi ?\"",
+    typeRelance:"Répondre + créer un pont",
+    propositions:[
+      "\"Je suis sur [domaine]. On a peut-être des sujets en commun — votre équipe travaille avec [équipe] parfois non ?\"",
+      "\"[Équipe]. On se croise probablement sur [projet transverse] — vous êtes impliqués là-dedans ?\"",
+      "\"[Équipe] — je connais [prénom] de votre côté. C'est toi qui gères [sujet] ou c'est quelqu'un d'autre ?\""
+    ],
+    diagnostic:"Répondre puis créer un pont vers un terrain commun potentiel — ça transforme un échange d'équipes en début de conversation utile." },
+
+  { id:"A2-B", mode:"pro", theme:"Ascenseur / Couloir",
+    situation:"Ascenseur du bureau. Un collègue d'une autre équipe monte avec toi. Vous vous reconnaissez sans vraiment vous connaître.",
+    amorce:"\"T'es sur quel projet en ce moment — c'est chargé de ton côté ?\"",
+    replique:"\"Ouais pas mal — on est en plein dans [sujet]. C'est dense.\"",
+    typeRelance:"Creuser sans interroger",
+    propositions:[
+      "\"Dense dans quel sens — c'est le volume ou la complexité du sujet ?\"",
+      "\"[Sujet] — j'entends parler du truc mais j'ai pas le détail. C'est quoi le gros enjeu en ce moment ?\"",
+      "\"Vous êtes en interaction avec beaucoup d'équipes sur ça ou c'est plutôt interne ?\""
+    ],
+    diagnostic:"L'autre a dit 'dense' — creuser ce mot montre qu'on écoute vraiment et donne une direction concrète à l'échange." },
+
+  { id:"A2-C", mode:"pro", theme:"Ascenseur / Couloir",
+    situation:"Ascenseur du bureau. Un collègue d'une autre équipe monte avec toi. Vous vous reconnaissez sans vraiment vous connaître.",
+    amorce:"\"C'est calme dans les bureaux aujourd'hui — tout le monde est en remote ?\"",
+    replique:"\"Ouais la moitié de l'équipe est pas là. Toi t'es là tous les jours ?\"",
+    typeRelance:"Répondre + observation légère",
+    propositions:[
+      "\"Pas tous les jours — 3 fois par semaine. Je préfère venir quand c'est vivant honnêtement. Votre équipe a un rythme fixe ou chacun fait comme il veut ?\"",
+      "\"Variable selon les semaines. Là ça manque un peu d'ambiance — t'as l'habitude ou ça te dérange ?\"",
+      "\"Je viens surtout quand j'ai des interactions à avoir. Sinon remote c'est plus efficace — toi t'es plus présentiel ?\""
+    ],
+    diagnostic:"L'autre a posé une vraie question — y répondre avec une info concrète puis rebondir sur leur organisation crée une réciprocité naturelle." },
+
+  { id:"C1-A", mode:"pro", theme:"Collègues",
+    situation:"Pause café. Un collègue avec qui tu travailles régulièrement mais avec qui la relation reste très pro et un peu froide.",
+    amorce:"\"T'as un truc sympa ce weekend ou c'est boulot-boulot ?\"",
+    replique:"\"Un peu les deux honnêtement. Et toi ?\"",
+    typeRelance:"Répondre + creuser le côté sympa",
+    propositions:[
+      "\"Pareil — j'ai quelque chose le samedi mais dimanche je décroche probablement pas totalement. C'est quoi le truc sympa de ton côté ?\"",
+      "\"Moi j'essaie de couper le vendredi soir mais ça marche pas toujours.\" (sourire) \"C'est quoi le boulot que t'arrives pas à lâcher ?\"",
+      "\"Mixte aussi. Le 'un peu les deux' c'est souvent 80% boulot dans les faits — toi c'est vraiment équilibré ou tu t'en convaincs ?\""
+    ],
+    diagnostic:"L'autre a répondu vaguement et retourné la question — y répondre puis creuser avec humour sur le côté sympa ou le côté boulot donne de la matière." },
+
+  { id:"C1-B", mode:"pro", theme:"Collègues",
+    situation:"Pause café. Un collègue avec qui tu travailles régulièrement mais avec qui la relation reste très pro et un peu froide.",
+    amorce:"\"C'est combien de cafés aujourd'hui — on en est où ?\"",
+    replique:"\"Troisième. C'est un problème.\" (sourire)",
+    typeRelance:"Humour léger + rebond",
+    propositions:[
+      "\"Bienvenue dans le club — moi j'essaie de couper après 15h. Ça marche pas.\" (sourire) \"T'as essayé de réduire ou t'as abandonné l'idée ?\"",
+      "\"Troisième à cette heure — respect. Moi je suis encore au premier mais la journée est longue.\"",
+      "\"C'est pas un problème — c'est une stratégie.\" (ton léger) \"T'arrives à dormir quand même ?\""
+    ],
+    diagnostic:"L'autre a ouvert avec de l'humour — rester dans ce registre et rebondir avec légèreté crée de la complicité sans forcer." },
+
+  { id:"C1-C", mode:"pro", theme:"Collègues",
+    situation:"Pause café. Un collègue avec qui tu travailles régulièrement mais avec qui la relation reste très pro et un peu froide.",
+    amorce:"\"T'as l'air en forme — ou t'es juste bien réveillé ?\"",
+    replique:"\"Bien réveillé — j'arrive tôt. Toi t'habites loin ?\"",
+    typeRelance:"Répondre + humaniser",
+    propositions:[
+      "\"20 minutes en transport — pas loin mais ça dépend des lignes. T'arrives tôt pour avoir du temps calme ou c'est les transports qui dictent ?\"",
+      "\"Pas très loin. Je préfère arriver tôt — bosser avant que ça s'anime. T'as vraiment du temps calme le matin ou les réunions commencent tôt ?\"",
+      "\"Assez loin. Tôt pour toi c'est quelle heure — parce que 'tôt' ça veut pas dire la même chose pour tout le monde.\""
+    ],
+    diagnostic:"La question 't'habites loin' est une ouverture perso — y répondre avec une info réelle puis rebondir sur son organisation fait sortir la conversation du registre pro." },
+
+  { id:"C2-A", mode:"pro", theme:"Collègues",
+    situation:"Salle de réunion, 2 minutes avant que ça commence. Tu es seul avec un collègue avec qui la relation est restée formelle.",
+    amorce:"\"C'est quoi l'ordre du jour réel selon toi — ça va durer longtemps ?\"",
+    replique:"\"Aucune idée — j'espère pas trop. T'as préparé quelque chose ?\"",
+    typeRelance:"Répondre + créer une mini-alliance",
+    propositions:[
+      "\"Pas vraiment — j'ai relu le contexte mais sans plus. T'as une vue sur ce qui a changé depuis la dernière réunion ?\"",
+      "\"À moitié. Je sais ce que j'ai à dire mais j'ai pas anticipé les questions. Toi t'es plutôt en mode écoute ou t'as des choses à pousser ?\"",
+      "\"J'ai regardé vite fait — j'attends de voir. T'as l'impression qu'on va prendre des décisions aujourd'hui ou c'est encore un tour d'alignement ?\""
+    ],
+    diagnostic:"Répondre honnêtement puis demander sa lecture de la réunion crée une mini-alliance avant même que ça commence." },
+
+  { id:"C2-B", mode:"pro", theme:"Collègues",
+    situation:"Salle de réunion, 2 minutes avant que ça commence. Tu es seul avec un collègue avec qui la relation est restée formelle.",
+    amorce:"\"C'est chargé comme semaine ? T'as l'air d'enchaîner les réunions.\"",
+    replique:"\"Ouais c'est non-stop depuis lundi. Toi c'est comment ?\"",
+    typeRelance:"Apporter + légèreté",
+    propositions:[
+      "\"Dense aussi. Je commence à me demander quand on est censé faire le vrai boulot.\" (sourire) \"T'as un moment de respiration dans la journée ?\"",
+      "\"Pareil — j'ai compté hier, j'avais 6 réunions. C'est quoi la pire de ta semaine jusqu'ici ?\"",
+      "\"Chargé. Mais celle-là on va essayer de la faire courte.\" (ton léger) \"C'est quoi qui t'a mis à la ramasse cette semaine ?\""
+    ],
+    diagnostic:"L'autre est dans le même état — le reconnaître avec légèreté crée de la solidarité immédiate. 'Le vrai boulot' ou 'la pire réunion' crée de la connivence." },
+
+  { id:"C2-C", mode:"pro", theme:"Collègues",
+    situation:"Salle de réunion, 2 minutes avant que ça commence. Tu es seul avec un collègue avec qui la relation est restée formelle.",
+    amorce:"\"T'as préparé quelque chose pour aujourd'hui ou on improvise ensemble ?\"",
+    replique:"\"À moitié. J'ai regardé le sujet hier soir mais vite fait.\"",
+    typeRelance:"Rebond sur sa position",
+    propositions:[
+      "\"Pareil — j'ai les grandes lignes. T'as une position sur [sujet] ou t'attends de voir ce que les autres disent ?\"",
+      "\"Même chose. Je suis curieux de voir si tout le monde est aligné ou si ça va débattre. T'as des infos de ton côté ?\"",
+      "\"Vite fait c'est souvent suffisant pour ce genre de réunion.\" (ton léger) \"C'est quoi le point qui te semble le plus flou ?\""
+    ],
+    diagnostic:"'J'ai regardé vite fait' signifie qu'il a une amorce d'opinion — creuser sa lecture du sujet avant la réunion est la transition la plus naturelle." },
+
+  { id:"E1-A", mode:"perso", theme:"École",
+    situation:"Un parent que tu vois tous les matins depuis des mois. Vous vous saluez depuis la rentrée sans jamais aller plus loin.",
+    amorce:"\"Ça fait depuis la rentrée qu'on se croise — j'ai même pas ton prénom. Moi c'est [prénom].\"",
+    replique:"\"[Prénom]. Mon fils est en CE1. Et le tien ?\"",
+    typeRelance:"Répondre + chercher un terrain commun",
+    propositions:[
+      "\"[Prénom], CP. Ils sont peut-être dans la même école depuis le début alors — t'étais à la maternelle du quartier ?\"",
+      "\"[Prénom], CE1 aussi — attends ils sont peut-être dans la même classe ! C'est quelle classe ?\"",
+      "\"[Prénom], CE2. Presque voisins de classe alors — ils se connaissent peut-être ?\""
+    ],
+    diagnostic:"Répondre puis chercher immédiatement un terrain commun côté enfants — c'est le pont le plus naturel pour continuer." },
+
+  { id:"E1-B", mode:"perso", theme:"École",
+    situation:"Un parent que tu vois tous les matins depuis des mois. Vous vous saluez depuis la rentrée sans jamais aller plus loin.",
+    amorce:"\"T'as eu le message de l'instit ce matin ? Je sais pas si j'ai bien compris ce qu'on doit faire.\"",
+    replique:"\"Oui — je crois que c'est pour la sortie du mois prochain non ?\"",
+    typeRelance:"Creuser sur les détails pratiques",
+    propositions:[
+      "\"C'est ce que j'ai compris aussi — mais la date je suis pas sûr. T'as une autorisation à signer ou c'est juste une info ?\"",
+      "\"Sortie oui — mais je crois qu'il y a aussi un truc pour les fournitures. T'as eu d'autres détails ?\"",
+      "\"Probable — et en général ces messages arrivent une semaine avant.\" (sourire) \"T'as déjà eu des surprises de ce genre ?\""
+    ],
+    diagnostic:"L'autre a confirmé — aller un cran plus loin sur les détails pratiques est la relance la plus naturelle, elle continue sur du concret partagé." },
+
+  { id:"E1-C", mode:"perso", theme:"École",
+    situation:"Un parent que tu vois tous les matins depuis des mois. Vous vous saluez depuis la rentrée sans jamais aller plus loin.",
+    amorce:"\"C'est animé ce matin — il se passe quelque chose ou c'est moi ?\"",
+    replique:"\"Je sais pas — j'ai l'impression qu'il y a un truc avec la cantine.\"",
+    typeRelance:"Rebond avec curiosité légère",
+    propositions:[
+      "\"La cantine — encore ? Il y a eu un problème récemment ou c'est autre chose ?\"",
+      "\"T'as entendu quelque chose de précis ou c'est juste une impression ?\"",
+      "\"Toujours la cantine... T'as des infos ou c'est le groupe WhatsApp qui s'emballe encore ?\" (sourire)"
+    ],
+    diagnostic:"'J'ai l'impression' signifie que l'autre n'est pas sûr — creuser avec curiosité (et une touche d'humour sur le groupe WhatsApp) crée de la complicité." },
+
+  { id:"G1-A", mode:"perso", theme:"Soirée",
+    situation:"Soirée entre amis. Tu saturtes, ta tête se vide. Un ami te présente quelqu'un que tu ne connais pas.",
+    amorce:"\"Il t'avait prévenu quoi sur moi — je veux calibrer ce que j'ai à rattraper.\"",
+    replique:"\"Pas grand chose — juste que vous vous connaissez du boulot.\"",
+    typeRelance:"Humour + rebond perso",
+    propositions:[
+      "\"C'est bien pour moi — ça laisse de la place.\" (sourire) \"Et toi t'es dans le boulot aussi ou c'est une autre vie ?\"",
+      "\"Du boulot — donc il a été diplomate.\" (sourire) \"T'es dans quel univers toi ?\"",
+      "\"Boulot c'est vague.\" (sourire) \"Je fais quoi à ton avis — t'as une intuition ?\""
+    ],
+    diagnostic:"La réponse est courte et neutre — rester dans le registre léger et rebondir sur l'autre est la relance la plus naturelle en soirée." },
+
+  { id:"G1-B", mode:"perso", theme:"Soirée",
+    situation:"Soirée entre amis. Tu saturtes, ta tête se vide. Un ami te présente quelqu'un que tu ne connais pas.",
+    amorce:"\"Vous vous connaissez comment tous les deux — c'est quoi l'histoire ?\"",
+    replique:"\"On s'est connus à la fac — ça fait longtemps. Et toi c'est quoi votre lien ?\"",
+    typeRelance:"Répondre + aller chercher leur histoire",
+    propositions:[
+      "\"Boulot — on a travaillé ensemble il y a quelques années. La fac c'était où — tu faisais quoi ?\"",
+      "\"On se connaît depuis longtemps — école. Fac à [ville] ?\"",
+      "\"Boulot. Fac ça crée des liens vraiment différents du boulot. Vous avez gardé le contact tout ce temps ou vous vous êtes retrouvés ?\""
+    ],
+    diagnostic:"Répondre à sa question puis aller chercher quelque chose sur leur histoire commune — l'origine d'un lien est toujours une bonne matière." },
+
+  { id:"G1-C", mode:"perso", theme:"Soirée",
+    situation:"Soirée entre amis. Tu saturtes, ta tête se vide. Un ami te présente quelqu'un que tu ne connais pas.",
+    amorce:"\"T'es là depuis longtemps ? C'est quoi ton bilan de la soirée jusqu'ici ?\"",
+    replique:"\"Une heure à peu près. Sympa — je connais pas grand monde en fait.\"",
+    typeRelance:"Créer une mini-alliance",
+    propositions:[
+      "\"Pareil — je suis un peu en mode découverte. C'est quoi ton lien avec [ami commun] à la base ?\"",
+      "\"Bienvenue dans le club.\" (sourire) \"Ça te dérange ou t'aimes bien les soirées où tu rencontres des gens ?\"",
+      "\"Je préfère ça en fait — moins de pression.\" (sourire) \"T'es venu comment ce soir — t'habitais loin ?\""
+    ],
+    diagnostic:"L'autre a avoué ne pas connaître grand monde — créer une mini-alliance sur cette situation partagée est le levier le plus simple pour passer à un vrai échange." },
+
+  { id:"G2b-A", mode:"perso", theme:"Soirée",
+    situation:"Soirée entre amis. Tu veux créer un tête-à-tête avec quelqu'un du groupe que tu connais peu.",
+    amorce:"\"On a jamais vraiment parlé tous les deux — c'est quoi ton lien avec [ami commun] à la base ?\"",
+    replique:"\"On s'est connus au travail. Toi t'es un ami d'enfance non ?\"",
+    typeRelance:"Confirmer + aller plus loin",
+    propositions:[
+      "\"Depuis longtemps oui. C'est quoi le boulot en commun — même boîte ou même projet ?\"",
+      "\"École oui — on a grandi dans le même quartier. Le travail c'était dans quel secteur ?\"",
+      "\"Depuis l'enfance oui. Vous avez gardé le contact tout ce temps ou vous vous êtes retrouvés récemment ?\""
+    ],
+    diagnostic:"Confirmer sa supposition puis creuser sur leur histoire commune — c'est la relance la plus naturelle après une info sur un ami commun." },
+
+  { id:"G2b-B", mode:"perso", theme:"Soirée",
+    situation:"Soirée entre amis. Tu veux créer un tête-à-tête avec quelqu'un du groupe que tu connais peu.",
+    amorce:"\"[Ami commun] m'a dit que tu faisais quelque chose d'intéressant — c'est quoi exactement ?\"",
+    replique:"\"C'est dans [domaine] — c'est assez technique mais c'est intéressant.\"",
+    typeRelance:"Creuser ce qui l'accroche",
+    propositions:[
+      "\"C'est intéressant comment — t'as une liberté là-dedans ou c'est très cadré ?\"",
+      "\"[Domaine] — c'est un monde que je connais mal. C'est quoi la partie qui t'accroche le plus là-dedans ?\"",
+      "\"Technique dans quel sens — c'est le sujet lui-même ou l'environnement dans lequel tu travailles ?\""
+    ],
+    diagnostic:"'C'est intéressant' est une ouverture — creuser ce qui l'accroche lui plutôt que les aspects techniques donne une conversation plus riche." },
+
+  { id:"G2b-C", mode:"perso", theme:"Soirée",
+    situation:"Soirée entre amis. Tu veux créer un tête-à-tête avec quelqu'un du groupe que tu connais peu.",
+    amorce:"\"T'as l'air dans ta tête — ou c'est moi qui projette ?\"",
+    replique:"\"Non t'as raison — grosse semaine. Ça se voit tant que ça ?\" (sourire)",
+    typeRelance:"Humour + espace pour continuer si l'autre veut",
+    propositions:[
+      "\"Un peu.\" (sourire) \"Mais dans le bon sens — t'as l'air de quelqu'un qui pense. C'est quoi la semaine qui t'a mis dans cet état ?\"",
+      "\"Légèrement.\" (sourire) \"T'arrives à décompresser ce soir ou c'est trop frais ?\"",
+      "\"Je suis curieux — c'est quoi une grosse semaine pour toi ? Parce que tout le monde n'a pas la même définition.\""
+    ],
+    diagnostic:"L'autre a confirmé et ouvert une porte — rester léger tout en lui donnant l'espace d'aller plus loin est l'équilibre parfait en soirée." },
+
+  { id:"R1-A", mode:"perso", theme:"Retrouvailles",
+    situation:"Dans la rue, tu tombes sur quelqu'un avec qui tu as travaillé dans le passé. Vous ne vous êtes pas vus depuis 2-3 ans.",
+    amorce:"\"Ça fait quoi — 2 ans ? T'es toujours chez [boîte] ou t'as bougé depuis ?\"",
+    replique:"\"J'ai bougé — je suis chez [nouvelle boîte] depuis 8 mois. Et toi t'es toujours là-bas ?\"",
+    typeRelance:"Répondre + creuser le changement",
+    propositions:[
+      "\"Toujours oui — mais les choses ont bougé. [Nouvelle boîte] c'est quoi comme univers — très différent de ce que tu faisais avant ?\"",
+      "\"Encore là-bas. 8 mois — c'est récent. C'est quoi qui t'a fait bouger — une opportunité ou t'avais besoin de changer ?\"",
+      "\"Toujours. [Nouvelle boîte] — je connais de nom. C'est comment par rapport à avant — tu retrouves des choses similaires ?\""
+    ],
+    diagnostic:"L'autre a changé de boîte — c'est le fait le plus intéressant à creuser. Ce qui a motivé le changement donne une vraie profondeur à l'échange." },
+
+  { id:"R1-B", mode:"perso", theme:"Retrouvailles",
+    situation:"Dans la rue, tu tombes sur quelqu'un avec qui tu as travaillé dans le passé. Vous ne vous êtes pas vus depuis 2-3 ans.",
+    amorce:"\"Je pensais à toi il y a pas longtemps — et te voilà. C'est suspect.\"",
+    replique:"\"Ah bon ? C'était en quel contexte ?\"",
+    typeRelance:"Répondre avec quelque chose de concret",
+    propositions:[
+      "\"J'ai vu passer un sujet sur [thème lié à votre collaboration] — ça m'a rappelé [projet partagé]. T'es encore dans cet univers ?\"",
+      "\"On parlait du projet [X] avec quelqu'un — et ton nom est sorti. Tu te souviens de cette période ?\"",
+      "\"J'ai eu une situation similaire à ce qu'on avait vécu sur [sujet] — ça m'a ramené à cette époque. C'est quoi la suite pour toi depuis ?\""
+    ],
+    diagnostic:"L'autre est curieux du contexte — y répondre avec un souvenir ou projet concret ancre l'échange dans quelque chose de réel et partagé." },
+
+  { id:"R1-C", mode:"perso", theme:"Retrouvailles",
+    situation:"Dans la rue, tu tombes sur quelqu'un avec qui tu as travaillé dans le passé. Vous ne vous êtes pas vus depuis 2-3 ans.",
+    amorce:"\"Quelle surprise — t'as pas changé. C'est quoi la vie en ce moment ?\"",
+    replique:"\"Ça bouge pas mal — j'ai changé de poste il y a quelques mois. Et toi ?\"",
+    typeRelance:"Répondre + creuser le changement",
+    propositions:[
+      "\"De mon côté ça évolue aussi — [une ligne sur toi]. Changement de poste dans la même boîte ou t'es parti ailleurs ?\"",
+      "\"Pour moi [une ligne]. C'est une évolution ou une vraie reconversion ?\"",
+      "\"[Une ligne sur toi]. Quelques mois — t'as pris le temps de chercher ou c'est venu rapidement ?\""
+    ],
+    diagnostic:"L'autre a changé de poste — répondre brièvement sur soi puis creuser son changement crée une vraie réciprocité." },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSTANTS & HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+const SELF_EVAL = [
+  { id:"contextualisee", label:"Contextualisée", negative:false },
+  { id:"naturelle", label:"Naturelle", negative:false },
+  { id:"ouvre", label:"Ouvre l'échange", negative:false },
+  { id:"trop_neutre", label:"Trop neutre", negative:true },
+  { id:"trop_directe", label:"Trop directe", negative:true },
+];
+const SESSION_SIZE = 5;
+const DEFI_ROUND = 3; // show challenge popup after completing this round (1-indexed)
+const PHASE = { HOME:"home", MODE:"mode", DELAY:"delay", TIMER:"timer", INPUT_DONE:"input_done", REVEALED:"revealed", DEFI:"defi", RECAP:"recap" };
+const MODULES = [
+  { id:"m1", label:"Module 1", sub:"Amorce", desc:"Ouvrir l'interaction — créer la première phrase" },
+  { id:"m2", label:"Module 2", sub:"Relance", desc:"Maintenir l'échange — ajouter une couche de matière" },
+];
+const MODES = [
+  { id:"pro", label:"Pro", desc:"Réunions, collègues, clients, déplacements" },
+  { id:"perso", label:"Perso", desc:"École, voisins, soirées, retrouvailles" },
+  { id:"mixte", label:"Mixte", desc:"Les deux — session variée" },
+];
+
+function shuffle(arr) {
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+function buildQueue(moduleId, mode) {
+  const pool = moduleId==="m1"
+    ? (mode==="mixte" ? SITUATIONS_M1 : SITUATIONS_M1.filter(s=>s.mode===mode))
+    : (mode==="mixte" ? SCENARIOS_M2 : SCENARIOS_M2.filter(s=>s.mode===mode));
+  return shuffle(pool).slice(0, SESSION_SIZE);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// APP
+// ─────────────────────────────────────────────────────────────────────────────
+export default function App() {
+  const [selectedModule, setSelectedModule] = useState(null);
+  const [selectedMode, setSelectedMode] = useState(null);
+  const [queue, setQueue] = useState([]);
+  const [roundIndex, setRoundIndex] = useState(0);
+  const [phase, setPhase] = useState(PHASE.HOME);
+  const [timerCount, setTimerCount] = useState(30);
+  const [userInput, setUserInput] = useState("");
+  const [checkedProps, setCheckedProps] = useState([false,false,false]);
+  const [selfEval, setSelfEval] = useState({});
+  const [sessionResults, setSessionResults] = useState([]);
+  const [defiAccepted, setDefiAccepted] = useState(null); // null | 'safe' | 'medium' | 'bold'
+  const [currentDefi] = useState(()=>DEFIS[Math.floor(Math.random()*DEFIS.length)]);
+  // M2 sequential reveal
+  const [m2Step, setM2Step] = useState(0); // 0=situation, 1=amorce, 2=replique, 3=button
+  const m2TimerRef = useRef(null);
+  const intervalRef = useRef(null);
+  const current = queue[roundIndex];
+
+  // Timer for main chrono
+  useEffect(()=>{
+    if(phase===PHASE.TIMER){
+      setTimerCount(30);
+      intervalRef.current=setInterval(()=>{
+        setTimerCount(t=>{
+          if(t<=1){clearInterval(intervalRef.current);setPhase(PHASE.INPUT_DONE);return 0;}
+          return t-1;
+        });
+      },1000);
+    }
+    return ()=>clearInterval(intervalRef.current);
+  },[phase]);
+
+  // M2 sequential reveal on DELAY phase
+  useEffect(()=>{
+    if(phase===PHASE.DELAY && selectedModule==="m2"){
+      setM2Step(0);
+      // step 1 after 2s, step 2 after 4s, step 3 after 6s
+      const t1=setTimeout(()=>setM2Step(1),2000);
+      const t2=setTimeout(()=>setM2Step(2),4000);
+      const t3=setTimeout(()=>setM2Step(3),6000);
+      m2TimerRef.current=[t1,t2,t3];
+      return ()=>[t1,t2,t3].forEach(clearTimeout);
+    }
+    if(phase===PHASE.DELAY && selectedModule==="m1"){
+      setM2Step(3); // show button immediately for m1
+    }
+  },[phase, selectedModule]);
+
+  const startSession=(mod,mode)=>{
+    setSelectedModule(mod); setSelectedMode(mode);
+    setQueue(buildQueue(mod,mode));
+    setRoundIndex(0); setUserInput(""); setCheckedProps([false,false,false]); setSelfEval({});
+    setSessionResults([]); setDefiAccepted(null);
+    setPhase(PHASE.DELAY);
+  };
+
+  const handleValidate=()=>{clearInterval(intervalRef.current);setPhase(PHASE.INPUT_DONE);};
+
+  const handleReveal=()=>{
+    setSessionResults(r=>[...r,{item:current,input:userInput,checkedProps,selfEval}]);
+    setPhase(PHASE.REVEALED);
+  };
+
+  const handleNext=()=>{
+    const next=roundIndex+1;
+    // Show defi popup after completing round 3 (index 2), only for M1
+    if(selectedModule==="m1" && roundIndex===DEFI_ROUND-1 && next < SESSION_SIZE){
+      setRoundIndex(next);
+      setUserInput(""); setCheckedProps([false,false,false]); setSelfEval({});
+      setPhase(PHASE.DEFI);
+      return;
+    }
+    if(next>=SESSION_SIZE){setPhase(PHASE.RECAP);}
+    else{
+      setRoundIndex(next);
+      setUserInput(""); setCheckedProps([false,false,false]); setSelfEval({});
+      setPhase(PHASE.DELAY);
+    }
+  };
+
+  const handleDefiContinue=()=>{
+    setPhase(PHASE.DELAY);
+  };
+
+  const goHome=()=>{setPhase(PHASE.HOME);setSelectedModule(null);setSelectedMode(null);};
+  const toggleProp=i=>setCheckedProps(c=>c.map((v,idx)=>idx===i?!v:v));
+  const toggleEval=id=>setSelfEval(s=>({...s,[id]:!s[id]}));
+
+  const timerPct=timerCount/30;
+  const C=2*Math.PI*28;
+  const modLabel=MODULES.find(m=>m.id===selectedModule)?.sub||"";
+  const modeLabel=MODES.find(m=>m.id===selectedMode)?.label||"";
+
+  const DEFI_LEVELS=[
+    { key:"safe", color:"#6aaa7a", label:"🟢 Safe", hint:"Pour briser la glace en douceur" },
+    { key:"medium", color:"#e8d5a3", label:"🟡 Medium", hint:"Pour nommer le croisement répété" },
+    { key:"bold", color:"#c47a5a", label:"🔴 Bold", hint:"Pour ceux qui osent vraiment" },
+  ];
+
+  return(
+    <div style={{minHeight:"100vh",background:"#0d0d0d",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Georgia,serif",padding:"28px 18px"}}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
+        *{box-sizing:border-box;}
+        .btn-gold{background:#e8d5a3;color:#0d0d0d;border:none;padding:13px 26px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:all .2s;}
+        .btn-gold:hover{background:#f0e0b0;transform:translateY(-1px);}
+        .btn-gold:disabled{opacity:.28;cursor:not-allowed;transform:none;}
+        .btn-outline{background:transparent;color:rgba(240,236,228,.45);border:1px solid rgba(240,236,228,.14);padding:11px 22px;font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .2s;}
+        .btn-outline:hover{border-color:rgba(232,213,163,.4);color:#e8d5a3;}
+        .card{width:100%;border:1px solid rgba(255,255,255,.08);padding:18px 20px;cursor:pointer;transition:all .2s;background:rgba(255,255,255,.02);text-align:left;}
+        .card:hover{border-color:rgba(232,213,163,.35);background:rgba(232,213,163,.035);}
+        .card.sel{border-color:#e8d5a3;background:rgba(232,213,163,.07);}
+        textarea{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(232,213,163,.2);color:#f0ece4;font-family:'DM Sans',sans-serif;font-size:15px;padding:15px;resize:none;outline:none;line-height:1.6;transition:border-color .2s;min-height:86px;}
+        textarea:focus{border-color:rgba(232,213,163,.5);}
+        textarea::placeholder{color:rgba(240,236,228,.2);}
+        .prop-row{display:flex;align-items:flex-start;gap:13px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.055);cursor:pointer;}
+        .prop-row:last-child{border-bottom:none;}
+        .cb{width:18px;height:18px;border:1px solid rgba(232,213,163,.32);flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+        .cb.on{background:#e8d5a3;border-color:#e8d5a3;}
+        .chip{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid rgba(255,255,255,.1);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:.05em;transition:all .15s;background:transparent;color:rgba(240,236,228,.45);}
+        .chip:hover{border-color:rgba(232,213,163,.3);color:rgba(240,236,228,.75);}
+        .chip.pos.on{border-color:#e8d5a3;color:#e8d5a3;background:rgba(232,213,163,.07);}
+        .chip.neg.on{border-color:#c47a5a;color:#c47a5a;background:rgba(196,122,90,.07);}
+        .fade{animation:fadeIn .4s ease forwards;}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+        .fade-slow{animation:fadeIn .6s ease forwards;}
+        .scenario-box{background:rgba(255,255,255,.03);border-left:2px solid rgba(232,213,163,.3);padding:12px 14px;margin-bottom:10px;}
+        .scenario-box.amorce{border-left-color:rgba(232,213,163,.5);}
+        .scenario-box.replique{border-left-color:rgba(255,255,255,.2);}
+        .tag{font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:.13em;color:rgba(232,213,163,.5);text-transform:uppercase;}
+        .defi-card{border:1px solid rgba(255,255,255,.1);padding:16px 18px;margin-bottom:10px;cursor:pointer;transition:all .2s;background:rgba(255,255,255,.02);}
+        .defi-card:hover{background:rgba(255,255,255,.05);}
+        .defi-card.chosen{border-color:#e8d5a3;background:rgba(232,213,163,.07);}
+      `}</style>
+
+      <div style={{width:"100%",maxWidth:"540px"}}>
+
+        {/* HEADER */}
+        <div style={{marginBottom:"26px"}}>
+          <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"10px",letterSpacing:".2em",color:"#e8d5a3",textTransform:"uppercase",marginBottom:"7px"}}>
+            Small Talk Training
+            {selectedModule && <span style={{color:"rgba(232,213,163,.4)"}}> · {modLabel}{selectedMode?` · ${modeLabel}`:""}</span>}
+          </div>
+          <div style={{fontFamily:"'Playfair Display',serif",fontSize:"25px",color:"#f0ece4",fontWeight:"700",lineHeight:1.2}}>
+            {phase===PHASE.HOME ? <>Entraînement<br/>quotidien</> :
+             phase===PHASE.MODE ? "Choisis ton mode" :
+             phase===PHASE.DEFI ? "Défi du jour" :
+             phase===PHASE.RECAP ? "Session terminée" :
+             <>Round {roundIndex+1}<span style={{color:"rgba(240,236,228,.3)"}}> / {SESSION_SIZE}</span></>}
+          </div>
+        </div>
+
+        {/* PROGRESS */}
+        {phase!==PHASE.HOME && phase!==PHASE.MODE && phase!==PHASE.DEFI && phase!==PHASE.RECAP && (
+          <div style={{display:"flex",gap:"7px",marginBottom:"26px"}}>
+            {Array.from({length:SESSION_SIZE}).map((_,i)=>(
+              <div key={i} style={{height:"3px",flex:1,transition:"background .3s",
+                background:i<roundIndex?"#e8d5a3":i===roundIndex?"rgba(232,213,163,.45)":"rgba(255,255,255,.09)"}}/>
+            ))}
+          </div>
+        )}
+
+        {/* ── HOME ─────────────────────────────────────────────────── */}
+        {phase===PHASE.HOME && (
+          <div className="fade">
+            <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"12px",color:"rgba(240,236,228,.35)",marginBottom:"24px",lineHeight:1.7}}>
+              Deux modules, un objectif —<br/>transformer le silence en réflexe.
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:"10px",marginBottom:"32px"}}>
+              {MODULES.map(m=>(
+                <button key={m.id} className="card" onClick={()=>{setSelectedModule(m.id);setPhase(PHASE.MODE);}}>
+                  <div style={{display:"flex",alignItems:"baseline",gap:"8px",marginBottom:"4px"}}>
+                    <span style={{fontFamily:"'DM Sans',sans-serif",fontSize:"10px",letterSpacing:".15em",color:"rgba(232,213,163,.5)",textTransform:"uppercase"}}>{m.label}</span>
+                    <span style={{fontFamily:"'Playfair Display',serif",fontSize:"17px",color:"#f0ece4"}}>{m.sub}</span>
+                  </div>
+                  <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"11px",color:"rgba(240,236,228,.35)"}}>{m.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── MODE ─────────────────────────────────────────────────── */}
+        {phase===PHASE.MODE && (
+          <div className="fade">
+            <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"12px",color:"rgba(240,236,228,.35)",marginBottom:"20px"}}>Choisis le contexte de ta session</div>
+            <div style={{display:"flex",flexDirection:"column",gap:"9px",marginBottom:"28px"}}>
+              {MODES.map(m=>(
+                <button key={m.id} className={`card${selectedMode===m.id?" sel":""}`} onClick={()=>setSelectedMode(m.id)}>
+                  <div style={{fontFamily:"'Playfair Display',serif",fontSize:"17px",color:selectedMode===m.id?"#e8d5a3":"#f0ece4",marginBottom:"3px"}}>{m.label}</div>
+                  <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"11px",color:"rgba(240,236,228,.35)"}}>{m.desc}</div>
+                </button>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:"10px",justifyContent:"space-between"}}>
+              <button className="btn-outline" onClick={goHome}>← Retour</button>
+              <button className="btn-gold" disabled={!selectedMode} onClick={()=>startSession(selectedModule,selectedMode)}>Démarrer →</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── DELAY ────────────────────────────────────────────────── */}
+        {phase===PHASE.DELAY && current && (
+          <div className="fade">
+            <div className="tag" style={{marginBottom:"10px"}}>{current.theme} · {selectedModule==="m1"?"Amorce":"Relance"}</div>
+
+            {selectedModule==="m1" && (
+              <>
+                <div style={{fontFamily:"'Playfair Display',serif",fontSize:"19px",color:"#f0ece4",lineHeight:1.65,marginBottom:"14px"}}>{current.situation}</div>
+                <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"12px",color:"rgba(240,236,228,.38)",marginBottom:"32px"}}>
+                  <span style={{color:"rgba(232,213,163,.5)"}}>Interlocuteur :</span> {current.interlocuteur}
+                </div>
+                {m2Step>=3 && (
+                  <div style={{display:"flex",justifyContent:"flex-end"}}>
+                    <button className="btn-gold" onClick={()=>setPhase(PHASE.TIMER)}>Démarrer le chrono →</button>
+                  </div>
+                )}
+              </>
+            )}
+
+            {selectedModule==="m2" && (
+              <>
+                <div style={{fontFamily:"'Playfair Display',serif",fontSize:"17px",color:"#f0ece4",lineHeight:1.65,marginBottom:"16px"}}>{current.situation}</div>
+                {m2Step>=1 && (
+                  <div className="scenario-box amorce fade-slow" style={{marginBottom:"8px"}}>
+                    <div className="tag" style={{marginBottom:"5px"}}>Amorce</div>
+                    <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"14px",color:"#e8d5a3",lineHeight:1.6}}>{current.amorce}</div>
+                  </div>
+                )}
+                {m2Step>=2 && (
+                  <div className="scenario-box replique fade-slow" style={{marginBottom:"24px"}}>
+                    <div className="tag" style={{marginBottom:"5px"}}>Réplique</div>
+                    <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"14px",color:"rgba(240,236,228,.8)",lineHeight:1.6}}>{current.replique}</div>
+                  </div>
+                )}
+                {m2Step>=3 && (
+                  <div className="fade" style={{display:"flex",justifyContent:"flex-end"}}>
+                    <button className="btn-gold" onClick={()=>setPhase(PHASE.TIMER)}>Produire ma relance →</button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── TIMER ────────────────────────────────────────────────── */}
+        {phase===PHASE.TIMER && current && (
+          <div className="fade">
+            <div className="tag" style={{marginBottom:"8px"}}>{current.theme}</div>
+
+            {selectedModule==="m1" && (
+              <>
+                <div style={{fontFamily:"'Playfair Display',serif",fontSize:"17px",color:"rgba(240,236,228,.7)",lineHeight:1.65,marginBottom:"8px"}}>{current.situation}</div>
+                <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"11px",color:"rgba(240,236,228,.28)",marginBottom:"18px"}}>
+                  <span style={{color:"rgba(232,213,163,.4)"}}>→</span> {current.typeAmorce}
+                </div>
+              </>
+            )}
+
+            {selectedModule==="m2" && (
+              <>
+                <div className="scenario-box amorce" style={{marginBottom:"6px"}}>
+                  <div className="tag" style={{marginBottom:"4px"}}>Amorce</div>
+                  <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"13px",color:"rgba(232,213,163,.8)",lineHeight:1.5}}>{current.amorce}</div>
+                </div>
+                <div className="scenario-box replique" style={{marginBottom:"16px"}}>
+                  <div className="tag" style={{marginBottom:"4px"}}>Réplique</div>
+                  <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"13px",color:"rgba(240,236,228,.7)",lineHeight:1.5}}>{current.replique}</div>
+                </div>
+                <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"11px",color:"rgba(240,236,228,.28)",marginBottom:"14px"}}>
+                  <span style={{color:"rgba(232,213,163,.4)"}}>→</span> {current.typeRelance}
+                </div>
+              </>
+            )}
+
+            <div style={{display:"flex",alignItems:"center",gap:"16px",marginBottom:"14px"}}>
+              <svg width="64" height="64" viewBox="0 0 64 64" style={{flexShrink:0}}>
+                <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="3"/>
+                <circle cx="32" cy="32" r="28" fill="none" stroke={timerCount<=10?"#c47a5a":"#e8d5a3"} strokeWidth="3"
+                  strokeDasharray={C} strokeDashoffset={C*(1-timerPct)} strokeLinecap="round" transform="rotate(-90 32 32)"
+                  style={{transition:"stroke-dashoffset .9s linear,stroke .3s"}}/>
+                <text x="32" y="37" textAnchor="middle" fill="#f0ece4" fontSize="16" fontFamily="'DM Sans',sans-serif" fontWeight="500">{timerCount}</text>
+              </svg>
+              <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"12px",color:"rgba(240,236,228,.32)",lineHeight:1.6}}>
+                {selectedModule==="m1"?"Produis ton amorce —":"Produis ta relance —"}<br/>à voix haute ou par écrit
+              </div>
+            </div>
+            <textarea placeholder={selectedModule==="m1"?"Tape ton amorce ici...":"Tape ta relance ici..."} value={userInput} onChange={e=>setUserInput(e.target.value)}/>
+            <div style={{marginTop:"14px",display:"flex",justifyContent:"flex-end"}}>
+              <button className="btn-gold" onClick={handleValidate}>J'ai répondu →</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── INPUT DONE ───────────────────────────────────────────── */}
+        {phase===PHASE.INPUT_DONE && current && (
+          <div className="fade">
+            <div className="tag" style={{marginBottom:"8px"}}>{current.theme}</div>
+
+            {selectedModule==="m2" && (
+              <>
+                <div className="scenario-box amorce" style={{marginBottom:"6px"}}>
+                  <div className="tag" style={{marginBottom:"4px"}}>Amorce</div>
+                  <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"13px",color:"rgba(232,213,163,.7)",lineHeight:1.5}}>{current.amorce}</div>
+                </div>
+                <div className="scenario-box replique" style={{marginBottom:"18px"}}>
+                  <div className="tag" style={{marginBottom:"4px"}}>Réplique</div>
+                  <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"13px",color:"rgba(240,236,228,.6)",lineHeight:1.5}}>{current.replique}</div>
+                </div>
+              </>
+            )}
+
+            {userInput && (
+              <div style={{background:"rgba(232,213,163,.05)",border:"1px solid rgba(232,213,163,.13)",padding:"13px",marginBottom:"20px"}}>
+                <div className="tag" style={{marginBottom:"6px"}}>Ta réponse</div>
+                <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"14px",color:"#f0ece4",lineHeight:1.6}}>{userInput}</div>
+              </div>
+            )}
+
+            <div style={{marginBottom:"22px"}}>
+              <div className="tag" style={{marginBottom:"12px"}}>Auto-évaluation — comment tu juges {selectedModule==="m1"?"ton amorce":"ta relance"} ?</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:"7px"}}>
+                {SELF_EVAL.map(e=>{
+                  const on=!!selfEval[e.id];
+                  return(
+                    <button key={e.id} className={`chip ${e.negative?"neg":"pos"}${on?" on":""}`} onClick={()=>toggleEval(e.id)}>
+                      {on && <svg width="9" height="9" viewBox="0 0 9 9"><path d="M1.5 4.5l2 2L7.5 2" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round"/></svg>}
+                      {e.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <button className="btn-gold" onClick={handleReveal}>Voir les propositions →</button>
+          </div>
+        )}
+
+        {/* ── REVEALED ─────────────────────────────────────────────── */}
+        {phase===PHASE.REVEALED && current && (
+          <div className="fade">
+            <div className="tag" style={{marginBottom:"8px"}}>{current.theme}</div>
+
+            {Object.values(selfEval).some(Boolean) && (
+              <div style={{display:"flex",flexWrap:"wrap",gap:"5px",marginBottom:"14px"}}>
+                {SELF_EVAL.filter(e=>selfEval[e.id]).map(e=>(
+                  <span key={e.id} style={{fontFamily:"'DM Sans',sans-serif",fontSize:"10px",letterSpacing:".07em",padding:"3px 9px",
+                    border:`1px solid ${e.negative?"rgba(196,122,90,.38)":"rgba(232,213,163,.32)"}`,
+                    color:e.negative?"#c47a5a":"#e8d5a3"}}>{e.label}</span>
+                ))}
+              </div>
+            )}
+
+            {selectedModule==="m2" && (
+              <>
+                <div className="scenario-box amorce" style={{marginBottom:"6px"}}>
+                  <div className="tag" style={{marginBottom:"4px"}}>Amorce</div>
+                  <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"13px",color:"rgba(232,213,163,.6)",lineHeight:1.5}}>{current.amorce}</div>
+                </div>
+                <div className="scenario-box replique" style={{marginBottom:"14px"}}>
+                  <div className="tag" style={{marginBottom:"4px"}}>Réplique</div>
+                  <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"13px",color:"rgba(240,236,228,.55)",lineHeight:1.5}}>{current.replique}</div>
+                </div>
+              </>
+            )}
+
+            {userInput && (
+              <div style={{background:"rgba(232,213,163,.04)",border:"1px solid rgba(232,213,163,.1)",padding:"13px",marginBottom:"16px"}}>
+                <div className="tag" style={{marginBottom:"6px"}}>Ta réponse</div>
+                <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"14px",color:"rgba(240,236,228,.65)",lineHeight:1.6}}>{userInput}</div>
+              </div>
+            )}
+
+            <div className="tag" style={{marginBottom:"4px"}}>3 {selectedModule==="m1"?"amorces":"relances"} · {selectedModule==="m1"?current.typeAmorce:current.typeRelance}</div>
+            <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"11px",color:"rgba(240,236,228,.28)",marginBottom:"13px"}}>Coche celles que tu retiens</div>
+            <div style={{marginBottom:"16px"}}>
+              {current.propositions.map((p,i)=>(
+                <div key={i} className="prop-row" onClick={()=>toggleProp(i)}>
+                  <div className={`cb${checkedProps[i]?" on":""}`}>
+                    {checkedProps[i] && <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 5l2.5 2.5L8 3" stroke="#0d0d0d" strokeWidth="1.5" fill="none" strokeLinecap="round"/></svg>}
+                  </div>
+                  <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"14px",color:"#f0ece4",lineHeight:1.6}}>{p}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{padding:"11px 14px",background:"rgba(255,255,255,.025)",borderLeft:"2px solid rgba(232,213,163,.26)",marginBottom:"22px"}}>
+              <div className="tag" style={{marginBottom:"4px"}}>À retenir</div>
+              <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"13px",color:"rgba(240,236,228,.48)",lineHeight:1.6}}>{current.diagnostic}</div>
+            </div>
+
+            <div style={{display:"flex",justifyContent:"flex-end"}}>
+              <button className="btn-gold" onClick={handleNext}>
+                {selectedModule==="m1" && roundIndex===DEFI_ROUND-1 && roundIndex+1<SESSION_SIZE
+                  ? "Défi du jour →"
+                  : roundIndex+1>=SESSION_SIZE?"Voir le récap →":"Round suivant →"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── DÉFI DU JOUR ─────────────────────────────────────────── */}
+        {phase===PHASE.DEFI && (
+          <div className="fade">
+            <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"12px",color:"rgba(240,236,228,.35)",marginBottom:"20px",lineHeight:1.7}}>
+              Mi-session — avant de continuer, choisis une phrase à utiliser aujourd'hui en conditions réelles. Elle doit remplacer ton "bonjour ça va ?" dans la prochaine interaction.
+            </div>
+
+            {DEFI_LEVELS.map(lvl=>(
+              <div key={lvl.key} className={`defi-card${defiAccepted===lvl.key?" chosen":""}`}
+                onClick={()=>setDefiAccepted(lvl.key)}>
+                <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"8px"}}>
+                  <span style={{fontFamily:"'DM Sans',sans-serif",fontSize:"11px",letterSpacing:".1em",color:lvl.color,textTransform:"uppercase"}}>{lvl.label}</span>
+                  <span style={{fontFamily:"'DM Sans',sans-serif",fontSize:"10px",color:"rgba(240,236,228,.3)"}}>{lvl.hint}</span>
+                </div>
+                <div style={{fontFamily:"'Playfair Display',serif",fontSize:"17px",color:"#f0ece4",lineHeight:1.55}}>
+                  {currentDefi[lvl.key]}
+                </div>
+                {defiAccepted===lvl.key && (
+                  <div style={{marginTop:"10px",fontFamily:"'DM Sans',sans-serif",fontSize:"11px",color:lvl.color,letterSpacing:".08em"}}>
+                    ✓ Je prends ce défi aujourd'hui
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <div style={{marginTop:"24px",display:"flex",justifyContent:"flex-end"}}>
+              <button className="btn-gold" disabled={!defiAccepted} onClick={handleDefiContinue}>
+                C'est noté — on continue →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── RECAP ────────────────────────────────────────────────── */}
+        {phase===PHASE.RECAP && (
+          <div className="fade">
+            <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"12px",color:"rgba(240,236,228,.32)",marginBottom:"30px"}}>
+              5 rounds · {modLabel} · {modeLabel}
+              {defiAccepted && <span style={{color:"rgba(232,213,163,.5)"}}> · défi {defiAccepted} accepté</span>}
+            </div>
+
+            <div style={{marginBottom:"28px"}}>
+              {sessionResults.map((r,i)=>{
+                const pos=SELF_EVAL.filter(e=>!e.negative&&r.selfEval[e.id]);
+                const neg=SELF_EVAL.filter(e=>e.negative&&r.selfEval[e.id]);
+                const retained=r.checkedProps.filter(Boolean).length;
+                return(
+                  <div key={i} style={{paddingBottom:"18px",marginBottom:"18px",borderBottom:"1px solid rgba(255,255,255,.05)"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:"5px"}}>
+                      <span className="tag">{r.item.theme} · {r.item.id}</span>
+                      {retained>0 && <span style={{fontFamily:"'DM Sans',sans-serif",fontSize:"10px",color:"rgba(232,213,163,.35)"}}>{retained} retenue{retained>1?"s":""}</span>}
+                    </div>
+                    <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"11px",color:"rgba(240,236,228,.26)",lineHeight:1.5,marginBottom:"6px"}}>
+                      {selectedModule==="m2"?r.item.amorce:r.item.situation}
+                    </div>
+                    {r.input
+                      ? <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"13px",color:"rgba(240,236,228,.65)",fontStyle:"italic",marginBottom:"8px"}}>→ {r.input}</div>
+                      : <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:"12px",color:"rgba(240,236,228,.18)",fontStyle:"italic",marginBottom:"8px"}}>— pas de réponse saisie</div>
+                    }
+                    <div style={{display:"flex",flexWrap:"wrap",gap:"5px"}}>
+                      {pos.map(e=><span key={e.id} style={{fontFamily:"'DM Sans',sans-serif",fontSize:"10px",padding:"3px 8px",border:"1px solid rgba(232,213,163,.25)",color:"#e8d5a3"}}>{e.label}</span>)}
+                      {neg.map(e=><span key={e.id} style={{fontFamily:"'DM Sans',sans-serif",fontSize:"10px",padding:"3px 8px",border:"1px solid rgba(196,122,90,.28)",color:"#c47a5a"}}>{e.label}</span>)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{display:"flex",gap:"10px",justifyContent:"space-between"}}>
+              <button className="btn-outline" onClick={goHome}>← Accueil</button>
+              <div style={{display:"flex",gap:"8px"}}>
+                <button className="btn-outline" onClick={()=>{setSelectedMode(null);setPhase(PHASE.MODE);}}>Changer de mode</button>
+                <button className="btn-gold" onClick={()=>startSession(selectedModule,selectedMode)}>Rejouer →</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
